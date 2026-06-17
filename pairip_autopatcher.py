@@ -154,8 +154,7 @@ class PairIPAutoPatcher:
         self._setup_logging(apk_name)
 
         if not self.output_dir:
-            base_dir = os.path.dirname(os.path.abspath(apk_path))
-            self.output_dir = os.path.join(base_dir, f'{apk_name}_patched')
+            self.output_dir = os.path.dirname(os.path.abspath(apk_path))
 
         banner = f"""{Color.CYAN}
 ██╗  ██╗██╗██████╗ ██████╗ ██╗██████╗     ██████╗  █████╗ ████████╗ ██████╗██╗  ██╗███████╗██████╗
@@ -207,17 +206,19 @@ class PairIPAutoPatcher:
         if not self.keep_decompile:
             self.analyzer.cleanup()
 
-        # Remove temp files, keep only patched APK
+        # Remove temp files, keep only merged and patched APKs
+        merged_name = f'{apk_name}_merged.apk'
         for f in os.listdir(self.output_dir):
             fpath = os.path.join(self.output_dir, f)
-            if os.path.abspath(fpath) != os.path.abspath(final_apk):
-                try:
-                    if os.path.isfile(fpath):
-                        os.remove(fpath)
-                    elif os.path.isdir(fpath):
-                        shutil.rmtree(fpath, ignore_errors=True)
-                except Exception:
-                    pass
+            if f == merged_name or os.path.abspath(fpath) == os.path.abspath(final_apk):
+                continue
+            try:
+                if os.path.isfile(fpath):
+                    os.remove(fpath)
+                elif os.path.isdir(fpath):
+                    shutil.rmtree(fpath, ignore_errors=True)
+            except Exception:
+                pass
 
         print(f"\n{Color.GREEN}[+] Done! Patched APK: {final_apk}{Color.RESET}")
         elapsed = time.time() - self.start_time
