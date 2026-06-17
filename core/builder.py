@@ -24,9 +24,9 @@ class APKBuilder:
         self.crc_fixer = CRC32Fixer(self.logger)
 
     def build(self) -> Optional[str]:
-        self.logger.info(f"\n{'=' * 60}")
-        self.logger.info(f"[*] Building patched APK...")
-        self.logger.info(f"{'=' * 60}")
+        self.logger.info(f"\n{Color.MAGENTA}{'=' * 60}{Color.RESET}")
+        self.logger.info(f"{Color.MAGENTA}[*] Building patched APK...{Color.RESET}")
+        self.logger.info(f"{Color.MAGENTA}{'=' * 60}{Color.RESET}")
 
         aligned_apk = self._build_apk()
         if not aligned_apk or not os.path.isfile(aligned_apk):
@@ -51,7 +51,7 @@ class APKBuilder:
 
         zipaligned = self._zipalign(self.output_apk)
         if zipaligned:
-            self.logger.info(f"[+] Final output: {self.output_apk}")
+            self.logger.info(f"{Color.GREEN}[+] Final output: {self.output_apk}{Color.RESET}")
             size_mb = os.path.getsize(self.output_apk) / (1024 * 1024)
             self.logger.info(f"    Size: {size_mb:.1f} MB")
 
@@ -72,21 +72,21 @@ class APKBuilder:
 
     def _build_apk_apkeditor(self, editor_jar: str) -> Optional[str]:
         tmp_out = os.path.join(self.analyzer.output_dir, f"{self.analyzer.apk_name}_unsigned.apk")
-        self.logger.info(f"[*] Rebuilding with APKEditor...")
+        self.logger.info(f"{Color.CYAN}[*] Rebuilding with APKEditor...{Color.RESET}")
         ret, out, err = run_command_stream(
             ['java', '-jar', editor_jar, 'b', '-i', self.analyzer.decompile_dir, '-o', tmp_out, '-f'],
             timeout=300, prefix=f"  {Color.DIM}",
             show_lines=[r'Smali<', r'Cached:', r'Saved to']
         )
         if ret == 0 and os.path.isfile(tmp_out):
-            self.logger.info(f"    Rebuilt APK: {tmp_out} ({os.path.getsize(tmp_out) / 1024 / 1024:.1f} MB)")
-            self.logger.info(f"[*] Stripping old signatures from rebuilt APK...")
+            self.logger.info(f"{Color.GREEN}    Rebuilt APK: {tmp_out} ({os.path.getsize(tmp_out) / 1024 / 1024:.1f} MB){Color.RESET}")
+            self.logger.info(f"{Color.YELLOW}[*] Stripping old signatures from rebuilt APK...{Color.RESET}")
             self._strip_old_signatures(tmp_out)
-            self.logger.info(f"[*] Fixing DEX CRCs in rebuilt APK...")
+            self.logger.info(f"{Color.YELLOW}[*] Fixing DEX CRCs in rebuilt APK...{Color.RESET}")
             self.crc_fixer.fix_all_dex_in_apk(tmp_out)
             return tmp_out
 
-        self.logger.warning("    APKEditor build failed, falling back to apktool")
+        self.logger.warning(f"{Color.RED}    APKEditor build failed, falling back to apktool{Color.RESET}")
         return self._build_apk_apktool()
 
     def _build_apk_apktool(self) -> Optional[str]:
@@ -101,26 +101,26 @@ class APKBuilder:
                 return self._build_apk_zip()
             cmd = ['java', '-jar', jar, 'b', '-o', tmp_out, self.analyzer.decompile_dir]
 
-        self.logger.info(f"[*] Rebuilding with apktool...")
+        self.logger.info(f"{Color.CYAN}[*] Rebuilding with apktool...{Color.RESET}")
         ret, out, err = run_command_stream(cmd, timeout=300, prefix=f"  {Color.DIM}",
                                            show_lines=[r'Building', r'ERROR', r'Finished'])  
 
         if ret != 0:
-            self.logger.warning(f"    apktool build failed: {err[:200]}")
-            self.logger.info("[*] Trying manual ZIP build as fallback...")
+            self.logger.warning(f"{Color.RED}    apktool build failed: {err[:200]}{Color.RESET}")
+            self.logger.info(f"{Color.YELLOW}[*] Trying manual ZIP build as fallback...{Color.RESET}")
             return self._build_apk_zip()
 
         if os.path.isfile(tmp_out):
-            self.logger.info(f"    Rebuilt APK: {tmp_out} ({os.path.getsize(tmp_out) / 1024 / 1024:.1f} MB)")
-            self.logger.info(f"[*] Stripping old signatures from rebuilt APK...")
+            self.logger.info(f"{Color.GREEN}    Rebuilt APK: {tmp_out} ({os.path.getsize(tmp_out) / 1024 / 1024:.1f} MB){Color.RESET}")
+            self.logger.info(f"{Color.YELLOW}[*] Stripping old signatures from rebuilt APK...{Color.RESET}")
             self._strip_old_signatures(tmp_out)
-            self.logger.info(f"[*] Fixing DEX CRCs in rebuilt APK...")
+            self.logger.info(f"{Color.YELLOW}[*] Fixing DEX CRCs in rebuilt APK...{Color.RESET}")
             self.crc_fixer.fix_all_dex_in_apk(tmp_out)
             return tmp_out
         return None
 
     def _build_apk_zip(self) -> Optional[str]:
-        self.logger.info("[*] Building APK via ZIP (manual)...")
+        self.logger.info(f"{Color.YELLOW}[*] Building APK via ZIP (manual)...{Color.RESET}")
         try:
             tmp_out = os.path.join(self.analyzer.output_dir, f"{self.analyzer.apk_name}_unsigned.apk")
             ensure_dir(os.path.dirname(tmp_out))
@@ -185,7 +185,7 @@ class APKBuilder:
         if uber:
             return self._sign_apk_uber(apk_path, uber)
 
-        self.logger.info("    apksigner/uber-apk-signer not found, using jarsigner...")
+        self.logger.info(f"{Color.DIM}    apksigner/uber-apk-signer not found, using jarsigner...{Color.RESET}")
         return self._sign_apk_jarsigner(apk_path)
 
     def _sign_apk_apksigner(self, apk_path: str) -> Optional[str]:
@@ -202,7 +202,7 @@ class APKBuilder:
             '--out', signed_path,
             apk_path
         ]
-        self.logger.info(f"[*] Signing with apksigner...")
+        self.logger.info(f"{Color.CYAN}[*] Signing with apksigner...{Color.RESET}")
         ret, out, err = run_command(cmd, timeout=60)
         if ret == 0:
             self.logger.info(f"    Signed APK: {signed_path}")
@@ -213,7 +213,7 @@ class APKBuilder:
     def _sign_apk_uber(self, apk_path: str, uber_path: str) -> Optional[str]:
         signed_path = apk_path.replace('_unsigned.apk', '_signed.apk')
         cmd = ['java', '-jar', uber_path, '--sign', '--out', signed_path, apk_path]
-        self.logger.info(f"[*] Signing with uber-apk-signer...")
+        self.logger.info(f"{Color.CYAN}[*] Signing with uber-apk-signer...{Color.RESET}")
         ret, out, err = run_command(cmd, timeout=60)
         if ret == 0:
             self.logger.info(f"    Signed: {signed_path}")

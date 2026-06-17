@@ -61,7 +61,7 @@ class PairIPAutoPatcher:
         output = os.path.join(os.path.dirname(path), f"{os.path.splitext(os.path.basename(path))[0]}_merged.apk")
         if os.path.isfile(output):
             os.remove(output)
-        print(f"{Color.CYAN}[i] Merging {os.path.basename(path)} with APKEditor...{Color.RESET}")
+        print(f"{Color.GREEN}[i] Merging {os.path.basename(path)} with APKEditor...{Color.RESET}")
         ret, out, err = run_command_stream(
             ['java', '-jar', editor, 'm', '-i', path, '-o', output, '-f'],
             timeout=300, prefix=f"  {Color.DIM}",
@@ -214,7 +214,10 @@ class PairIPAutoPatcher:
 
     def _setup_logging(self, name: str):
         if not self.output_dir:
-            self.output_dir = '/tmp/pairip_output'
+            default = '/tmp/pairip_output'
+            if self.android_mode:
+                default = os.path.join(os.path.expanduser('~'), 'pairip_output')
+            self.output_dir = default
         ensure_dir(self.output_dir)
         log_file = os.path.join(self.output_dir, f'{name}_pairip_autopatcher.log')
         level = logging.DEBUG if self.verbose else logging.INFO
