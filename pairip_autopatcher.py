@@ -156,17 +156,12 @@ class PairIPAutoPatcher:
         if not self.output_dir:
             self.output_dir = os.path.dirname(os.path.abspath(apk_path))
 
-        banner = f"""{Color.CYAN}
-██╗  ██╗██╗██████╗ ██████╗ ██╗██████╗     ██████╗  █████╗ ████████╗ ██████╗██╗  ██╗███████╗██████╗
-██║  ██║██║██╔══██╗██╔══██╗██║██╔══██╗    ██╔══██╗██╔══██╗╚══██╔══╝██╔════╝██║  ██║██╔════╝██╔══██╗
-███████║██║██████╔╝██████╔╝██║██████╔╝    ██████╔╝███████║   ██║   ██║     ███████║█████╗  ██████╔╝
-██╔══██║██║██╔═══╝ ██╔═══╝ ██║██╔═══╝     ██╔═══╝ ██╔══██║   ██║   ██║     ██╔══██║██╔══╝  ██╔══██╗
-██║  ██║██║██║     ██║     ██║██║         ██║     ██║  ██║   ██║   ╚██████╗██║  ██║███████╗██║  ██║
-╚═╝  ╚═╝╚═╝╚═╝     ╚═╝     ╚═╝╚═╝         ╚═╝     ╚═╝  ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝{Color.RESET}
-{Color.BOLD}{Color.CYAN}═══════════════════════════════════════════════════════════════{Color.RESET}
-{Color.CYAN} Input :{Color.RESET} {os.path.basename(apk_path):<53}
-{Color.CYAN} Output:{Color.RESET} {os.path.basename(self.output_dir):<53}
-{Color.BOLD}{Color.CYAN}═══════════════════════════════════════════════════════════════{Color.RESET}"""
+        banner = f"""{Color.CYAN}╔══════════════════════════════════════╗
+║        {Color.BOLD}PairIP Auto Patcher{Color.RESET}{Color.CYAN}        ║
+╠══════════════════════════════════════╣
+║  Input : {os.path.basename(apk_path):<28}║
+║  Output: {os.path.basename(self.output_dir):<28}║
+╚══════════════════════════════════════╝{Color.RESET}"""
         print(banner)
 
         if self.android_mode:
