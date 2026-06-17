@@ -186,8 +186,6 @@ class PairIPAutoPatcher:
         else:
             self.logger.info(f"{Color.DIM}[*] Skipping PairIP processing (--skip-pairip){Color.RESET}")
 
-        self._extract_artifacts()
-
         ext = os.path.splitext(apk_path)[1]
         output_apk = os.path.join(self.output_dir, f'{apk_name}_patched.apk')
         print(f"{Color.MAGENTA}[i] Rebuilding patched APK...{Color.RESET}")

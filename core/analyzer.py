@@ -70,9 +70,6 @@ class APKAnalyzer:
         self._find_smali_dirs()
         self._scan_native_libs()
         self._scan_dex_files()
-        self._scan_certificate_pinning()
-        self._scan_api_endpoints()
-        self._scan_billing()
         self._find_smali_files()
 
         self.logger.info(f"    Package: {self.apk_info['package_name']}")
