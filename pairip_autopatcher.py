@@ -16,6 +16,7 @@ import shutil
 import argparse
 import logging
 import time
+import glob
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -24,6 +25,7 @@ from core.utils import (
     safe_delete, Color, CRC32Fixer, CONSOLE, RICH_AVAILABLE,
     ensure_jar, get_jar_path, JARS_DIR
 )
+import shutil
 from core.analyzer import APKAnalyzer
 from core.pairip import PairIPDetector, PairIPPatcher
 from core.builder import APKBuilder
@@ -58,13 +60,13 @@ class PairIPAutoPatcher:
             print(f"{Color.FAIL}[!] APKEditor.jar required to merge {ext} files{Color.RESET}")
             print(f"{Color.WARNING}[i] Download APKEditor.jar manually or use --apktool to bypass{Color.RESET}")
             sys.exit(1)
-        output = os.path.join(os.path.dirname(path), f"{os.path.splitext(os.path.basename(path))[0]}_merged.apk")
+        output = os.path.abspath(os.path.join(os.path.dirname(path), f"{os.path.splitext(os.path.basename(path))[0]}_merged.apk"))
         if os.path.isfile(output):
             os.remove(output)
         print(f"{Color.GREEN}[i] Merging {os.path.basename(path)} with APKEditor...{Color.RESET}")
         ret, out, err = run_command_stream(
             ['java', '-jar', editor, 'm', '-i', path, '-o', output, '-f'],
-            timeout=300, prefix=f"  {Color.DIM}",
+            timeout=300, prefix=f"  {Color.GREEN}",
             show_lines=[r'Merging:', r'Added \[', r'Saved to']
         )
         if ret == 0 and os.path.isfile(output):
@@ -107,6 +109,10 @@ class PairIPAutoPatcher:
 
     def run(self) -> bool:
         self._check_environment()
+        if self.apk_path:
+            self.apk_path = os.path.abspath(self.apk_path)
+        if self.input_dir:
+            self.input_dir = os.path.abspath(self.input_dir)
         if self.batch_mode and self.input_dir:
             return self._run_batch()
         elif self.apk_path:
@@ -165,12 +171,6 @@ class PairIPAutoPatcher:
         print(banner)
 
         if self.android_mode:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            cwd = os.getcwd()
-            if script_dir != cwd and not cwd.startswith(script_dir):
-                print(f"{Color.WARNING}[!] Tool directory: {script_dir}{Color.RESET}")
-                os.chdir(script_dir)
-                print(f"{Color.CYAN}[i] Changed working directory to tool location{Color.RESET}")
             print(f"{Color.DIM}[i] Android mode: running from {os.getcwd()}{Color.RESET}")
 
         ensure_dir(self.output_dir)
@@ -187,7 +187,7 @@ class PairIPAutoPatcher:
             return False
 
         if not self.skip_pairip:
-            print(f"{Color.CYAN}[i] Detecting PairIP protection...{Color.RESET}")
+            print(f"{Color.YELLOW}[i] Detecting PairIP protection...{Color.RESET}")
             self._handle_pairip()
         else:
             self.logger.info(f"{Color.DIM}[*] Skipping PairIP processing (--skip-pairip){Color.RESET}")
@@ -196,7 +196,7 @@ class PairIPAutoPatcher:
 
         ext = os.path.splitext(apk_path)[1]
         output_apk = os.path.join(self.output_dir, f'{apk_name}_patched.apk')
-        print(f"{Color.CYAN}[i] Rebuilding patched APK...{Color.RESET}")
+        print(f"{Color.MAGENTA}[i] Rebuilding patched APK...{Color.RESET}")
         builder = APKBuilder(self.analyzer, output_apk, self.logger, self.keystore, use_apktool=self.use_apktool)
         final_apk = builder.build()
 
@@ -206,6 +206,18 @@ class PairIPAutoPatcher:
 
         if not self.keep_decompile:
             self.analyzer.cleanup()
+
+        # Remove temp files, keep only patched APK
+        for f in os.listdir(self.output_dir):
+            fpath = os.path.join(self.output_dir, f)
+            if os.path.abspath(fpath) != os.path.abspath(final_apk):
+                try:
+                    if os.path.isfile(fpath):
+                        os.remove(fpath)
+                    elif os.path.isdir(fpath):
+                        shutil.rmtree(fpath, ignore_errors=True)
+                except Exception:
+                    pass
 
         print(f"\n{Color.GREEN}[+] Done! Patched APK: {final_apk}{Color.RESET}")
         elapsed = time.time() - self.start_time

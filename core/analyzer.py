@@ -102,7 +102,7 @@ class APKAnalyzer:
         self.logger.info("[*] Decompiling with APKEditor...")
         ret, out, err = run_command_stream(
             ['java', '-jar', editor, 'd', '-i', self.apk_path, '-o', self.decompile_dir, '-f'],
-            timeout=300, prefix=f"  {Color.DIM}",
+            timeout=300, prefix=f"  {Color.CYAN}",
             show_lines=[r'Baksmali:', r'Saved to']
         )
         if ret == 0 and os.path.isdir(self.decompile_dir):

@@ -75,7 +75,7 @@ class APKBuilder:
         self.logger.info(f"{Color.CYAN}[*] Rebuilding with APKEditor...{Color.RESET}")
         ret, out, err = run_command_stream(
             ['java', '-jar', editor_jar, 'b', '-i', self.analyzer.decompile_dir, '-o', tmp_out, '-f'],
-            timeout=300, prefix=f"  {Color.DIM}",
+            timeout=300, prefix=f"  {Color.MAGENTA}",
             show_lines=[r'Smali<', r'Cached:', r'Saved to']
         )
         if ret == 0 and os.path.isfile(tmp_out):
@@ -102,7 +102,7 @@ class APKBuilder:
             cmd = ['java', '-jar', jar, 'b', '-o', tmp_out, self.analyzer.decompile_dir]
 
         self.logger.info(f"{Color.CYAN}[*] Rebuilding with apktool...{Color.RESET}")
-        ret, out, err = run_command_stream(cmd, timeout=300, prefix=f"  {Color.DIM}",
+        ret, out, err = run_command_stream(cmd, timeout=300, prefix=f"  {Color.MAGENTA}",
                                            show_lines=[r'Building', r'ERROR', r'Finished'])  
 
         if ret != 0:
