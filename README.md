@@ -6,12 +6,12 @@ Automated PairIP protection removal tool for Android APK/APKS/XAPK files.
 
 ### One-liner (auto-detect Termux/Linux)
 ```bash
-curl -Ls https://github.com/c0derArm/RPairip/releases/download/v1.0/RKPairip.sh | bash
+curl -Ls https://raw.githubusercontent.com/c0derArmy/RPairip/main/RKPairip.sh | bash
 ```
 
 ### Manual
 ```bash
-git clone https://github.com/c0derArm/RPairip.git
+git clone https://github.com/c0derArmy/RPairip.git
 cd RPairip
 pip install -r requirements.txt
 pip install .
