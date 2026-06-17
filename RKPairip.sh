@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set +e
 
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
@@ -13,7 +13,7 @@ echo "║          RPairip - Auto Installer               ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
-REPO_URL="https://github.com/c0derArm/RPairip"
+REPO_URL="https://github.com/c0derArmy/RPairip"
 INSTALL_DIR="$HOME/.RPairip"
 
 detect_termux() {
