@@ -67,10 +67,7 @@ class APKAnalyzer:
             self.logger.warning("    Decompilation may be partial; continuing...")
 
         self._parse_manifest()
-        self._find_smali_dirs()
-        self._scan_native_libs()
-        self._scan_dex_files()
-        self._find_smali_files()
+        self._walk_all()
 
         self.logger.info(f"    Package: {self.apk_info['package_name']}")
         self.logger.info(f"    Version: {self.apk_info['version_name']} ({self.apk_info['version_code']})")
@@ -304,10 +301,10 @@ class APKAnalyzer:
         if m:
             self.apk_info['version_code'] = int(m.group(1))
 
-    def _find_smali_dirs(self):
+    def _walk_all(self):
         for root, dirs, files in os.walk(self.decompile_dir):
             bn = os.path.basename(root)
-            if bn.startswith('smali'):
+            if bn.startswith('smali') and root not in self.smali_dirs:
                 self.smali_dirs.append(root)
             if bn == 'lib' and not self.lib_dir:
                 self.lib_dir = root
@@ -315,26 +312,19 @@ class APKAnalyzer:
                 self.assets_dir = root
             if bn == 'res' and not self.res_dir:
                 self.res_dir = root
-
-    def _scan_native_libs(self):
-        if not self.lib_dir or not os.path.isdir(self.lib_dir):
-            return
-        for root, dirs, files in os.walk(self.lib_dir):
             for f in files:
-                if f.endswith('.so'):
-                    path = os.path.join(root, f)
+                if f.endswith('.smali'):
+                    self.all_smali_files.append(os.path.join(root, f))
+                elif f.endswith('.so') and self.lib_dir and root.startswith(self.lib_dir):
                     arch = os.path.basename(os.path.dirname(root)) if root != self.lib_dir else 'unknown'
-                    self.native_libs[f] = {
-                        'path': path,
-                        'arch': arch,
-                        'size': os.path.getsize(path),
-                    }
-                    self.apk_info['native_libs'].append(f)
-
-    def _scan_dex_files(self):
-        for root, dirs, files in os.walk(self.decompile_dir):
-            for f in files:
-                if f.endswith('.dex'):
+                    if f not in self.native_libs:
+                        self.native_libs[f] = {
+                            'path': os.path.join(root, f),
+                            'arch': arch,
+                            'size': os.path.getsize(os.path.join(root, f)),
+                        }
+                        self.apk_info['native_libs'].append(f)
+                elif f.endswith('.dex'):
                     self.dex_files.append(os.path.join(root, f))
         if not self.dex_files:
             dex_path = os.path.join(self.decompile_dir, 'classes.dex')
@@ -348,100 +338,18 @@ class APKAnalyzer:
                     i += 1
                 else:
                     break
+            dex_path = os.path.join(self.decompile_dir, 'classes.dex')
+            if os.path.isfile(dex_path):
+                self.dex_files.append(dex_path)
+            i = 2
+            while True:
+                dex_path = os.path.join(self.decompile_dir, f'classes{i}.dex')
+                if os.path.isfile(dex_path):
+                    self.dex_files.append(dex_path)
+                    i += 1
+                else:
+                    break
         self.apk_info['dex_count'] = len(self.dex_files)
-
-    def _scan_certificate_pinning(self):
-        patterns = [
-            r'CertificatePinner',
-            r'certificatePinner',
-            r'certificate_pinner',
-            r'checkServerTrusted',
-            r'TrustManager',
-            r'SSLSocketFactory',
-            r'pinCertificate',
-            r'pinning',
-            r'CertificateChainValidation',
-            r'certChain',
-            r'\.cer',
-            r'\.crt',
-            r'sha256/',
-            r'publicKeyHash',
-        ]
-        for root, dirs, files in os.walk(self.decompile_dir):
-            for f in files:
-                if f.endswith('.smali') or f.endswith('.xml'):
-                    path = os.path.join(root, f)
-                    try:
-                        with open(path, 'rb') as fh:
-                            content = fh.read(65536)
-                            text = content.decode('utf-8', errors='replace')
-                            for pat in patterns:
-                                if re.search(pat, text, re.IGNORECASE):
-                                    rel = os.path.relpath(path, self.decompile_dir)
-                                    self.certificate_pins.append((rel, pat))
-                                    break
-                    except Exception:
-                        pass
-
-    def _scan_api_endpoints(self):
-        url_pattern = re.compile(
-            r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+(?::\d+)?(?:/[-\w$.+!*\'(),;:@&=?/~#%]*)?',
-            re.IGNORECASE
-        )
-        firebase_pattern = re.compile(r'https?://[-\w.]+\.firebaseio\.com', re.IGNORECASE)
-        analytics_pattern = re.compile(r'https?://[-\w.]+\.googleapis\.com/(?:analytics|firestore|identitytoolkit)', re.IGNORECASE)
-
-        seen = set()
-        for root, dirs, files in os.walk(self.decompile_dir):
-            for f in files:
-                if f.endswith('.smali'):
-                    path = os.path.join(root, f)
-                    try:
-                        with open(path, 'rb') as fh:
-                            content = fh.read(1048576)
-                            text = content.decode('utf-8', errors='replace')
-                            for m in url_pattern.finditer(text):
-                                url = m.group()
-                                if url not in seen:
-                                    seen.add(url)
-                                    self.api_endpoints.append(url)
-                    except Exception:
-                        pass
-
-    def _scan_billing(self):
-        billing_keywords = [
-            'com/android/billingclient', 'BillingClient', 'BillingFlowParams',
-            'Purchase', 'SkuDetails', 'queryPurchases', 'querySkuDetailsAsync',
-            'launchBillingFlow', 'PurchasesUpdatedListener', 'BillingResult',
-            'queryPurchaseHistory', 'acknowledgePurchase', 'consumeAsync',
-            'RevenueCat', 'Adapty', 'Qonversion', 'Purchasely', 'Apphud',
-            'inapp', 'subscription', 'billing',
-        ]
-        for root, dirs, files in os.walk(self.decompile_dir):
-            for f in files:
-                if f.endswith('.smali'):
-                    path = os.path.join(root, f)
-                    try:
-                        with open(path, 'rb') as fh:
-                            content = fh.read(524288)
-                            text = content.decode('utf-8', errors='replace')
-                            for kw in billing_keywords:
-                                if kw.lower().replace('/', '.') in text.lower() or kw.lower().replace('.', '/') in text.lower():
-                                    rel = os.path.relpath(path, self.decompile_dir)
-                                    self.billing_imports.append((rel, kw))
-                                    if kw in ('RevenueCat', 'Adapty', 'Qonversion', 'Purchasely', 'Apphud'):
-                                        self.third_party_payment.append(kw)
-                                    break
-                    except Exception:
-                        pass
-        if self.billing_imports:
-            self.apk_info['has_billing'] = True
-
-    def _find_smali_files(self):
-        for root, dirs, files in os.walk(self.decompile_dir):
-            for f in files:
-                if f.endswith('.smali'):
-                    self.all_smali_files.append(os.path.join(root, f))
 
     def get_smali_content(self, smali_path: str) -> Optional[str]:
         path = os.path.join(self.decompile_dir, smali_path) if not os.path.isabs(smali_path) else smali_path
